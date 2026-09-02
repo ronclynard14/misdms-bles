@@ -1,12 +1,12 @@
 // Prisma schema for Batong Lusong Elementary School DMS-MIS
-// Generated for MySQL/MariaDB
+// Generated for PostgreSQL (Supabase)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
