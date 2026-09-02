@@ -20,8 +20,8 @@ export async function GET(request: Request, { params }: { params: { userId: stri
         email: true,
         role: true,
         department: true,
-        phone: true,
-        avatar: true,
+        phoneNumber: true,
+        image: true,
         bio: true,
         createdAt: true,
         updatedAt: true,
@@ -54,11 +54,11 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
       where: { id: userId },
       data: {
         ...(name && { name }),
-        ...(phone && { phone }),
+        ...(phone && { phoneNumber: phone }),
         ...(bio && { bio }),
-        ...(avatar && { avatar }),
+        ...(avatar && { image: avatar }),
       },
-      select: { id: true, name: true, email: true, role: true, phone: true, bio: true, avatar: true },
+      select: { id: true, name: true, email: true, role: true, phoneNumber: true, bio: true, image: true },
     });
 
     return NextResponse.json(user);

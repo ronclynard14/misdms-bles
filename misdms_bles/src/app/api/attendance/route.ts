@@ -100,6 +100,19 @@ export async function POST(request: Request) {
     return notFoundResponse("Section");
   }
 
+  if (session.user.role === "TEACHER") {
+    const hasTeachingLoad = await prisma.teachingLoad.findFirst({
+      where: { teacherId: session.user.id, sectionId },
+    });
+    if (!hasTeachingLoad) {
+      return forbiddenResponse("Not assigned to this section", {
+        userId: session.user.id,
+        action: "POST",
+        resource: "/api/attendance",
+      });
+    }
+  }
+
   const dateObj = new Date(date);
   if (isNaN(dateObj.getTime())) {
     return badRequestResponse("Invalid date format (use YYYY-MM-DD)");
@@ -131,8 +144,8 @@ export async function POST(request: Request) {
     records.map((record: any) =>
       prisma.attendanceRecord.upsert({
         where: {
-          studentId_date_quarter: {
-            studentId: record.studentId,
+          enrollmentId_date_quarter: {
+            enrollmentId: record.enrollmentId,
             date: dateObj,
             quarter,
           },
@@ -191,9 +204,25 @@ export async function PATCH(request: Request) {
     return badRequestResponse(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
   }
 
-  const record = await prisma.attendanceRecord.findUnique({ where: { id } });
+  const record = await prisma.attendanceRecord.findUnique({
+    where: { id },
+    include: { enrollment: { select: { sectionId: true } } },
+  });
   if (!record) {
     return notFoundResponse("Attendance record");
+  }
+
+  if (session.user.role === "TEACHER") {
+    const hasTeachingLoad = await prisma.teachingLoad.findFirst({
+      where: { teacherId: session.user.id, sectionId: record.enrollment.sectionId! },
+    });
+    if (!hasTeachingLoad) {
+      return forbiddenResponse("Not assigned to this section", {
+        userId: session.user.id,
+        action: "PATCH",
+        resource: "/api/attendance",
+      });
+    }
   }
 
   const updated = await prisma.attendanceRecord.update({

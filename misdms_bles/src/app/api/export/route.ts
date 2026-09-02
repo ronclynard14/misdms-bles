@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     switch (resource) {
       case "students":
         data = await prisma.student.findMany({
-          where: { status: "ACTIVE" },
+          where: { status: { not: "DROPPED_OUT" } },
           select: { lrn: true, firstName: true, lastName: true, gender: true, birthDate: true, status: true },
         });
         break;
@@ -96,9 +96,10 @@ export async function POST(request: Request) {
     await prisma.auditLog.create({
       data: {
         action: "EXPORT",
-        resource: `export:${resource}`,
-        details: `Exported ${data.length} ${resource} records`,
-        userId: session.user.id,
+        entityType: "EXPORT",
+        entityId: resource,
+        details: { resource, count: data.length },
+        performedById: session.user.id,
       },
     }).catch(() => {});
 
@@ -129,8 +130,8 @@ export async function GET(request: Request) {
 
   try {
     const exports = await prisma.auditLog.findMany({
-      where: { action: "EXPORT", userId: session.user.id },
-      orderBy: { createdAt: "desc" },
+      where: { action: "EXPORT", performedById: session.user.id },
+      orderBy: { timestamp: "desc" },
       take: 20,
     });
 

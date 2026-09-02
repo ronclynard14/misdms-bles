@@ -77,8 +77,15 @@ export default function GradeWorkflowPage() {
     setError(null);
 
     try {
+      const sectionsResponse = await fetch("/api/sections?page=1&pageSize=1");
+      const sectionsData = sectionsResponse.ok ? await sectionsResponse.json() : null;
+      const sectionId = sectionsData?.data?.[0]?.id;
+      if (!sectionId) {
+        setGrades([]);
+        return;
+      }
       const response = await fetch(
-        `/api/grades/workflow?sectionId=section-1&status=${selectedStatus}`
+        `/api/grades/workflow?sectionId=${sectionId}&status=${selectedStatus}`
       );
 
       if (!response.ok) throw new Error("Failed to fetch grades");

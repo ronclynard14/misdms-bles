@@ -150,7 +150,7 @@ export async function enableQueryCaching(
       key: "active_students",
       fn: () =>
         prisma.student.findMany({
-          where: { status: "ACTIVE" },
+          where: { status: "ENROLLED" },
           select: { id: true, firstName: true, lastName: true, lrn: true },
         }),
       ttl,

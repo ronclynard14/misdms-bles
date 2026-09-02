@@ -63,23 +63,23 @@ export default function AnalyticsDashboard() {
       setLoading(true);
       setError(null);
 
-      const [dashStats, attTrend, grTrend, topPerf, atRisk, gradeDist] =
-        await Promise.all([
+      const sectionsResponse = await fetch("/api/sections?page=1&pageSize=1");
+      const sectionsData = sectionsResponse.ok ? await sectionsResponse.json() : null;
+      const sectionId = sectionsData?.data?.[0]?.id;
+      const [dashStats, attTrend, grTrend] = await Promise.all([
           fetch("/api/analytics?metric=dashboard").then((r) => r.json()),
           fetch("/api/analytics?metric=attendance_trend&days=30").then((r) =>
             r.json()
           ),
           fetch("/api/analytics?metric=grade_trend").then((r) => r.json()),
-          fetch("/api/analytics?metric=top_performers&sectionId=section-1&limit=5")
-            .then((r) => r.json())
-            .catch(() => ({ data: [] })),
-          fetch("/api/analytics?metric=at_risk_students&sectionId=section-1")
-            .then((r) => r.json())
-            .catch(() => ({ data: [] })),
-          fetch("/api/analytics?metric=grade_distribution&sectionId=section-1")
-            .then((r) => r.json())
-            .catch(() => ({ data: {} })),
         ]);
+      const [topPerf, atRisk, gradeDist] = sectionId
+        ? await Promise.all([
+            fetch(`/api/analytics?metric=top_performers&sectionId=${sectionId}&limit=5`).then((r) => r.json()),
+            fetch(`/api/analytics?metric=at_risk_students&sectionId=${sectionId}`).then((r) => r.json()),
+            fetch(`/api/analytics?metric=grade_distribution&sectionId=${sectionId}`).then((r) => r.json()),
+          ])
+        : [{ data: [] }, { data: [] }, { data: {} }];
 
       setStats(dashStats);
       setAttendanceTrend(attTrend.data || []);

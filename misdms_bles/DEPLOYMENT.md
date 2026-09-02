@@ -20,7 +20,7 @@
 
 ### Prerequisites
 - Node.js 18+ and npm
-- MySQL 8.0+ (or MariaDB 10.6+)
+- PostgreSQL 14+
 - XAMPP or equivalent local environment
 
 ### Installation (5 minutes)
@@ -57,12 +57,12 @@ Visit: http://localhost:3000
 
 **XAMPP (Local Development):**
 ```
-DATABASE_URL="mysql://root:@localhost:3306/misdms_bles"
+DATABASE_URL="postgresql://postgres:password@localhost:5432/misdms_bles?schema=public"
 ```
 
-**Remote MySQL:**
+**Remote PostgreSQL:**
 ```
-DATABASE_URL="mysql://username:password@host:3306/misdms_bles"
+DATABASE_URL="postgresql://username:password@host:5432/misdms_bles?schema=public"
 ```
 
 ### 2. Authentication Keys

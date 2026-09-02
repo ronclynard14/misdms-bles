@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { unauthorizedResponse, forbiddenResponse, badRequestResponse } from "@/lib/api-responses";
 import { validateFileUpload, saveUploadedFile, getFileCategory, formatFileSize } from "@/lib/file-upload";
 import { join } from "path";
+import { unlink } from "fs/promises";
 
-const UPLOAD_DIR = join(process.cwd(), "public", "uploads");
+const UPLOAD_DIR = join(process.cwd(), "storage", "uploads");
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    const isPublic = formData.get("isPublic") === "true";
+    const isPublic = false;
     const metadata = formData.get("metadata");
 
     if (!file) {
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       data: {
         originalName: fileName,
         fileName: savedFileName,
-        filePath: `/uploads/${savedFileName}`,
+        filePath: `/api/upload/${savedFileName}`,
         fileSize,
         mimeType,
         category,
@@ -178,14 +179,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    // Delete from database
+    // Remove the stored object before deleting its database record.
+    await unlink(join(UPLOAD_DIR, file.fileName)).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== "ENOENT") throw err;
+    });
+
     await prisma.uploadedFile.delete({
       where: { id: fileId },
     });
-
-    // TODO: Delete from filesystem
-    // const filePath = join(UPLOAD_DIR, file.fileName);
-    // await unlink(filePath);
 
     return NextResponse.json({
       success: true,

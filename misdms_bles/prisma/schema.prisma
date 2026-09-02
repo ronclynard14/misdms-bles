@@ -197,6 +197,9 @@ model User {
   routingsInitiated DocumentRouteLog[] @relation("RouteInitiator")
   generatedForms   SchoolForm[]      @relation("SchoolFormGenerator")
   announcements    Announcement[]
+  uploadedFiles    UploadedFile[]   @relation("FileUploader")
+  sentNotifications Notification[]  @relation("NotificationSender")
+  updatedSettings  SystemSetting[]  @relation("SettingUpdater")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -441,7 +444,7 @@ model AttendanceRecord {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  @@unique([studentId, date, quarter])
+  @@unique([enrollmentId, date, quarter])
   @@index([enrollmentId])
   @@index([date])
   @@index([studentId])
@@ -608,4 +611,52 @@ model Announcement {
   author    User?    @relation(fields: [authorId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model UploadedFile {
+  id           String   @id @default(cuid())
+  originalName String
+  fileName     String   @unique
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  category     String
+  uploadedById String
+  uploadedBy   User     @relation("FileUploader", fields: [uploadedById], references: [id])
+  isPublic     Boolean  @default(false)
+  metadata     Json?
+  uploadedAt   DateTime @default(now())
+
+  @@index([uploadedById])
+  @@index([category])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  recipient String
+  template  String
+  subject   String?
+  status    String
+  sentAt    DateTime?
+  sentById  String?
+  sentBy    User?    @relation("NotificationSender", fields: [sentById], references: [id])
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String
+  category    String
+  dataType    String
+  updatedById  String
+  updatedBy    User     @relation("SettingUpdater", fields: [updatedById], references: [id])
+  updatedAt   DateTime @updatedAt
 }

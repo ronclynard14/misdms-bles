@@ -98,11 +98,12 @@ export async function createBackup(userId: string): Promise<BackupMetadata> {
     await prisma.auditLog.create({
       data: {
         action: "BACKUP_CREATED",
-        resource: `backup:${backupId}`,
-        details: `Backup created with ${Object.values(recordCounts).reduce((a, b) => a + b, 0)} total records`,
-        userId,
+        entityType: "BACKUP",
+        entityId: backupId,
+        details: { recordCounts },
+        performedById: userId,
       },
-    }).catch(() => {});
+    });
 
     return metadata;
   } catch (err) {
@@ -186,11 +187,11 @@ export async function restoreBackup(backupId: string, userId: string): Promise<v
 
     // Start transaction
     await prisma.$transaction(async (tx) => {
-      // Clear existing data (dangerous - requires confirmation)
+      // Delete children before parents so foreign-key constraints remain valid.
       const tables = Object.keys(backup.data);
 
-      for (const table of tables) {
-        const model = (prisma as any)[table];
+      for (const table of [...tables].reverse()) {
+        const model = (tx as any)[table];
         if (model) {
           await model.deleteMany();
         }
@@ -198,10 +199,10 @@ export async function restoreBackup(backupId: string, userId: string): Promise<v
 
       // Restore data
       for (const [table, records] of Object.entries(backup.data)) {
-        const model = (prisma as any)[table];
+        const model = (tx as any)[table];
         if (model && Array.isArray(records)) {
           for (const record of records) {
-            await model.create({ data: record }).catch(() => {});
+            await model.create({ data: record });
           }
         }
       }
@@ -211,11 +212,12 @@ export async function restoreBackup(backupId: string, userId: string): Promise<v
     await prisma.auditLog.create({
       data: {
         action: "BACKUP_RESTORED",
-        resource: `backup:${backupId}`,
-        details: `Backup restored with ${Object.keys(backup.data).length} tables`,
-        userId,
+        entityType: "BACKUP",
+        entityId: backupId,
+        details: { tables: Object.keys(backup.data) },
+        performedById: userId,
       },
-    }).catch(() => {});
+    });
   } catch (err) {
     console.error("Backup restoration error:", err);
     throw new Error("Failed to restore backup");

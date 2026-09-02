@@ -70,6 +70,8 @@ export default function ReportCustomizationPage() {
   const [success, setSuccess] = useState(false);
   const [format, setFormat] = useState<"csv" | "json">("csv");
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [sectionId, setSectionId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
 
   if (status === "unauthenticated") {
     router.push("/login");
@@ -108,6 +110,11 @@ export default function ReportCustomizationPage() {
   }
 
   async function handleGenerateReport() {
+    if (!sectionId || (reportType === "class_record" && !subjectId)) {
+      setError("Select a section and subject before generating this report");
+      return;
+    }
+
     setGenerating(true);
     setError(null);
 
@@ -119,8 +126,8 @@ export default function ReportCustomizationPage() {
           action: "generate",
           reportType,
           template: { fields: selectedFields },
-          sectionId: "section-1", // TODO: Get from context/selector
-          subjectId: reportType === "class_record" ? "subject-1" : undefined,
+          sectionId,
+          subjectId: reportType === "class_record" ? subjectId : undefined,
           quarter: "FIRST",
           format,
         }),
@@ -250,6 +257,32 @@ export default function ReportCustomizationPage() {
                     <span className="ml-2 text-sm text-gray-700">{type.label}</span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-white p-6 shadow">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Scope</h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="text-sm text-gray-700">
+                  Section ID
+                  <input
+                    value={sectionId}
+                    onChange={(event) => setSectionId(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+                    placeholder="Enter section ID"
+                  />
+                </label>
+                {reportType === "class_record" && (
+                  <label className="text-sm text-gray-700">
+                    Subject ID
+                    <input
+                      value={subjectId}
+                      onChange={(event) => setSubjectId(event.target.value)}
+                      className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+                      placeholder="Enter subject ID"
+                    />
+                  </label>
+                )}
               </div>
             </div>
 

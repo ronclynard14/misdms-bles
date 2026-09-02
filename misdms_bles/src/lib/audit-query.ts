@@ -55,31 +55,31 @@ export async function queryAuditLogs(filter: AuditLogFilter): Promise<AuditLogRe
   }
 
   if (filter.resource) {
-    where.resource = {
+    where.entityType = {
       contains: filter.resource,
       mode: "insensitive",
     };
   }
 
   if (filter.userId) {
-    where.userId = filter.userId;
+    where.performedById = filter.userId;
   }
 
   if (filter.startDate || filter.endDate) {
-    where.createdAt = {};
+    where.timestamp = {};
     if (filter.startDate) {
-      where.createdAt.gte = filter.startDate;
+      where.timestamp.gte = filter.startDate;
     }
     if (filter.endDate) {
-      where.createdAt.lte = filter.endDate;
+      where.timestamp.lte = filter.endDate;
     }
   }
 
   if (filter.searchTerm) {
     where.OR = [
-      { resource: { contains: filter.searchTerm, mode: "insensitive" } },
+      { entityType: { contains: filter.searchTerm, mode: "insensitive" } },
       { details: { contains: filter.searchTerm, mode: "insensitive" } },
-      { user: { name: { contains: filter.searchTerm, mode: "insensitive" } } },
+      { performedBy: { name: { contains: filter.searchTerm, mode: "insensitive" } } },
     ];
   }
 
@@ -88,9 +88,9 @@ export async function queryAuditLogs(filter: AuditLogFilter): Promise<AuditLogRe
       where,
       skip,
       take: pageSize,
-      orderBy: { createdAt: "desc" },
+      orderBy: { timestamp: "desc" },
       include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
+        performedBy: { select: { id: true, name: true, email: true, role: true } },
       },
     }),
     prisma.auditLog.count({ where }),
@@ -111,10 +111,10 @@ export async function getAuditSummary(days: number = 7): Promise<AuditSummary> {
 
   const logs = await prisma.auditLog.findMany({
     where: {
-      createdAt: { gte: startDate },
+      timestamp: { gte: startDate },
     },
     include: {
-      user: { select: { name: true } },
+      performedBy: { select: { name: true } },
     },
   });
 
@@ -128,11 +128,11 @@ export async function getAuditSummary(days: number = 7): Promise<AuditSummary> {
     actionsByType[log.action as AuditAction] = (actionsByType[log.action as AuditAction] || 0) + 1;
 
     // Count by user
-    const userName = log.user?.name || "Unknown";
+    const userName = log.performedBy?.name || "Unknown";
     actionsByUser[userName] = (actionsByUser[userName] || 0) + 1;
 
     // Count by resource
-    actionsByResource[log.resource] = (actionsByResource[log.resource] || 0) + 1;
+    actionsByResource[log.entityType] = (actionsByResource[log.entityType] || 0) + 1;
 
     // Count failed attempts
     if (log.action === "PERMISSION_DENIED") {
@@ -158,10 +158,10 @@ export async function getActionsByUser(userId: string, days: number = 30): Promi
 
   return prisma.auditLog.findMany({
     where: {
-      userId,
-      createdAt: { gte: startDate },
+      performedById: userId,
+      timestamp: { gte: startDate },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { timestamp: "desc" },
     take: 100,
   });
 }
@@ -172,15 +172,15 @@ export async function getActionsByResource(resource: string, days: number = 30):
 
   return prisma.auditLog.findMany({
     where: {
-      resource: {
+      entityType: {
         contains: resource,
         mode: "insensitive",
       },
-      createdAt: { gte: startDate },
+      timestamp: { gte: startDate },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { timestamp: "desc" },
     include: {
-      user: { select: { name: true, email: true } },
+      performedBy: { select: { name: true, email: true } },
     },
     take: 100,
   });
@@ -193,26 +193,26 @@ export async function getFailedAttempts(days: number = 7): Promise<any[]> {
   return prisma.auditLog.findMany({
     where: {
       action: "PERMISSION_DENIED",
-      createdAt: { gte: startDate },
+      timestamp: { gte: startDate },
     },
     orderBy: { createdAt: "desc" },
     include: {
-      user: { select: { id: true, name: true, email: true, role: true } },
+      performedBy: { select: { id: true, name: true, email: true, role: true } },
     },
   });
 }
 
 export function formatLogEntry(log: any): string {
-  const timestamp = new Date(log.createdAt).toLocaleString();
-  const userName = log.user?.name || "Unknown User";
-  return `[${timestamp}] ${userName} - ${log.action} on ${log.resource}`;
+  const timestamp = new Date(log.timestamp).toLocaleString();
+  const userName = log.performedBy?.name || "Unknown User";
+  return `[${timestamp}] ${userName} - ${log.action} on ${log.entityType}`;
 }
 
 export function groupLogsByDate(logs: any[]): Record<string, any[]> {
   const grouped: Record<string, any[]> = {};
 
   for (const log of logs) {
-    const date = new Date(log.createdAt).toLocaleDateString();
+    const date = new Date(log.timestamp).toLocaleDateString();
     if (!grouped[date]) {
       grouped[date] = [];
     }

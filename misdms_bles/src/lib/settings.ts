@@ -208,6 +208,13 @@ export async function updateSetting(
 
 export async function initializeDefaultSettings(): Promise<void> {
   try {
+    const systemUser = await prisma.user.findFirst({
+      where: { status: "ACTIVE" },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!systemUser) return;
+
     for (const [key, config] of Object.entries(DEFAULT_SETTINGS)) {
       const existing = await prisma.systemSetting.findUnique({
         where: { key: key as SettingKey },
@@ -221,7 +228,7 @@ export async function initializeDefaultSettings(): Promise<void> {
             description: config.description,
             category: config.category as any,
             dataType: config.dataType as any,
-            updatedById: "system",
+            updatedById: systemUser.id,
           },
         });
       }

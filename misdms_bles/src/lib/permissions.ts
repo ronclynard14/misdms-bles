@@ -23,6 +23,23 @@ export const rolePermissions: Record<string, RolePermissionConfig> = {
       "alerts:view",
       "alerts:manage",
       "settings:manage",
+      "analytics:view",
+      "attendance:view",
+      "attendance:manage",
+      "reports:view",
+      "reports:generate",
+      "reports:manage",
+      "backup:create",
+      "backup:restore",
+      "backup:view",
+      "backup:download",
+      "export:data",
+      "file:upload",
+      "file:view",
+      "file:manage",
+      "search:data",
+      "notification:send",
+      "notification:view",
     ],
   },
   PRINCIPAL: {
@@ -54,6 +71,14 @@ export const rolePermissions: Record<string, RolePermissionConfig> = {
       "audit:view",
       "alerts:view",
       "alerts:manage",
+      "analytics:view",
+      "attendance:view",
+      "attendance:manage",
+      "reports:view",
+      "reports:generate",
+      "export:data",
+      "file:view",
+      "search:data",
     ],
   },
   REGISTRAR: {
@@ -80,6 +105,14 @@ export const rolePermissions: Record<string, RolePermissionConfig> = {
       "reports:generate",
       "alerts:view",
       "alerts:manage",
+      "analytics:view",
+      "attendance:view",
+      "reports:view",
+      "reports:generate",
+      "reports:manage",
+      "export:data",
+      "file:view",
+      "search:data",
     ],
   },
   ICT_COORDINATOR: {
@@ -103,22 +136,30 @@ export const rolePermissions: Record<string, RolePermissionConfig> = {
       "inventory:view",
       "settings:manage",
       "alerts:view",
+      "analytics:view",
+      "settings:view",
+      "file:view",
+      "file:upload",
+      "file:manage",
+      "search:data",
+      "notification:view",
+      "notification:send",
     ],
   },
   TEACHER: {
     label: "Teacher",
     routes: ["/dashboard", "/grading", "/attendance", "/documents", "/reports", "/alerts"],
-    permissions: ["grade:manage", "attendance:manage", "document:view", "alerts:view"],
+    permissions: ["grade:view", "grade:manage", "attendance:view", "attendance:manage", "document:view", "alerts:view", "reports:view", "reports:generate", "search:data"],
   },
   ADVISER: {
     label: "Adviser",
     routes: ["/dashboard", "/grading", "/attendance", "/documents", "/reports", "/alerts"],
-    permissions: ["grade:manage", "attendance:manage", "document:view", "alerts:view"],
+    permissions: ["grade:view", "grade:manage", "attendance:view", "attendance:manage", "document:view", "alerts:view", "reports:view", "reports:generate", "search:data"],
   },
   NON_TEACHING: {
     label: "Non-Teaching Staff",
     routes: ["/dashboard", "/documents", "/inventory"],
-    permissions: ["document:view", "inventory:view", "inventory:manage"],
+    permissions: ["document:view", "inventory:view", "inventory:manage", "file:view", "search:data"],
   },
   ADMIN_OFFICER: {
     label: "Administrative Officer",
@@ -131,6 +172,12 @@ export const rolePermissions: Record<string, RolePermissionConfig> = {
       "reports:generate",
       "alerts:view",
       "alerts:manage",
+      "analytics:view",
+      "reports:view",
+      "reports:manage",
+      "export:data",
+      "file:view",
+      "search:data",
     ],
   },
 };
@@ -141,7 +188,12 @@ export function hasPermission(role: Role, permission: string): boolean {
   const config = rolePermissions[role];
   if (!config) return false;
   if (role === "SUPER_ADMIN") return true;
-  return config.permissions.includes(permission);
+  const aliases: Record<string, string> = {
+    "report:view": "reports:view",
+    "grades:view": "grade:view",
+    "grades:manage": "grade:manage",
+  };
+  return config.permissions.includes(permission) || config.permissions.includes(aliases[permission]);
 }
 
 export function canAccessRoute(role: Role, pathname: string): boolean {

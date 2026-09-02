@@ -56,10 +56,10 @@ export interface EnrollmentTrend {
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [studentCount, facultyCount, sectionCount, enrollmentCount] = await Promise.all([
-    prisma.student.count({ where: { status: "ACTIVE" } }),
+    prisma.student.count({ where: { status: "ENROLLED" } }),
     prisma.user.count({ where: { status: "ACTIVE", role: { in: ["TEACHER", "ADVISER"] } } }),
     prisma.section.count(),
-    prisma.enrollment.count({ where: { status: "ACTIVE" } }),
+    prisma.enrollment.count({ where: { status: "ENROLLED" } }),
   ]);
 
   const attendanceRecords = await prisma.attendanceRecord.findMany({
