@@ -37,6 +37,7 @@ export default function AttendancePage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedSection, setSelectedSection] = useState<string>("");
   const [students, setStudents] = useState<Student[]>([]);
+  const [enrollmentByStudent, setEnrollmentByStudent] = useState<Record<string, string>>({});
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,9 @@ export default function AttendancePage() {
 
         const enrollments = await enrollRes.json();
         setStudents(enrollments.map((e: any) => e.student));
+        setEnrollmentByStudent(
+          Object.fromEntries(enrollments.map((e: any) => [e.student.id, e.id]))
+        );
 
         // Initialize attendance from existing records
         const attendanceMap: Record<string, AttendanceStatus> = {};
@@ -116,14 +120,9 @@ export default function AttendancePage() {
       setError("");
       setSuccessMessage("");
 
-      // Get enrollment IDs for students
-      const enrollRes = await fetch(`/api/enrollment?sectionId=${selectedSection}`);
-      const enrollments = await enrollRes.json();
-      const enrollmentMap = new Map(enrollments.map((e: any) => [e.student.id, e.id]));
-
       const records = students.map((student) => ({
-        enrollmentId: enrollmentMap.get(student.id),
-        status: attendance[enrollmentMap.get(student.id) || ""] || "PRESENT",
+        enrollmentId: enrollmentByStudent[student.id],
+        status: attendance[enrollmentByStudent[student.id]] || "PRESENT",
       }));
 
       const res = await fetch("/api/attendance", {
@@ -253,8 +252,8 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((student, idx) => {
-                  const enrollmentId = `enrollment_${idx}`; // Placeholder - should come from enrollment
+                {students.map((student) => {
+                  const enrollmentId = enrollmentByStudent[student.id];
                   const currentStatus = attendance[enrollmentId];
 
                   return (

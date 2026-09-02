@@ -1,5 +1,7 @@
 import { prisma } from "./prisma";
 
+const customTemplateStore = new Map<string, ReportTemplate>();
+
 export interface ReportTemplate {
   id: string;
   name: string;
@@ -79,20 +81,25 @@ export async function createReportTemplate(
 ): Promise<ReportTemplate> {
   const id = `template_${Date.now()}`;
 
-  const stored = {
+  const stored: ReportTemplate = {
     id,
     ...template,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
+  customTemplateStore.set(id, stored);
+
   // In production, save to database
   // await prisma.reportTemplate.create({ data: stored });
 
-  return stored as ReportTemplate;
+  return stored;
 }
 
 export async function getReportTemplate(templateId: string): Promise<ReportTemplate | null> {
+  const custom = customTemplateStore.get(templateId);
+  if (custom) return custom;
+
   // In production: await prisma.reportTemplate.findUnique({ where: { id: templateId } });
   return null;
 }
@@ -119,14 +126,23 @@ export async function listReportTemplates(
     updatedAt: new Date(),
   }));
 
+  const custom = Array.from(customTemplateStore.values()).filter(
+    (template) => template.createdBy === userId && (!type || template.type === type)
+  );
+
   return type
-    ? defaults.filter((t) => t.type === type)
-    : (defaults as ReportTemplate[]);
+    ? [...custom, ...defaults.filter((t) => t.type === type)]
+    : [...custom, ...defaults];
 }
 
 export async function deleteReportTemplate(templateId: string): Promise<void> {
   if (templateId.startsWith("default_")) {
     throw new Error("Cannot delete default templates");
+  }
+
+  if (customTemplateStore.has(templateId)) {
+    customTemplateStore.delete(templateId);
+    return;
   }
   // In production: await prisma.reportTemplate.delete({ where: { id: templateId } });
 }
@@ -138,8 +154,22 @@ export async function updateReportTemplate(
   if (templateId.startsWith("default_")) {
     throw new Error("Cannot modify default templates");
   }
+
+  const existing = customTemplateStore.get(templateId);
+  if (!existing) {
+    throw new Error("Template not found");
+  }
+
+  const updated: ReportTemplate = {
+    ...existing,
+    ...updates,
+    updatedAt: new Date(),
+  };
+
+  customTemplateStore.set(templateId, updated);
+
   // In production: return await prisma.reportTemplate.update({ where: { id: templateId }, data: updates });
-  throw new Error("Not implemented");
+  return updated;
 }
 
 export async function generateClassRecordReport(

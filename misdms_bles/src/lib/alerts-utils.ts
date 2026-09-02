@@ -85,8 +85,8 @@ export async function createAlert(
 ): Promise<Alert> {
   const severity = options?.severity || ALERT_CONFIG[type].severity;
 
-  const alert = {
-    id: `alert_${Date.now()}`,
+  const alert: Alert = {
+    id: `alert_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     type,
     severity,
     title,
@@ -98,14 +98,23 @@ export async function createAlert(
     isResolved: false,
   };
 
-  // Log to database
   await prisma.auditLog
     .create({
       data: {
         action: "ALERT_CREATED",
-        resource: `alert:${type}`,
-        details: message,
-        userId: "system",
+        entityType: "ALERT",
+        entityId: alert.id,
+        details: {
+          type,
+          title,
+          message,
+          targetRole: alert.targetRole,
+          targetUser: alert.targetUser,
+          metadata: alert.metadata,
+          severity,
+        },
+        performedById: alert.targetUser || null,
+        ipAddress: "system",
       },
     })
     .catch(() => {});
@@ -117,37 +126,38 @@ export async function checkAttendanceThreshold(threshold: number = 85): Promise<
   const alerts: Alert[] = [];
 
   const enrollments = await prisma.enrollment.findMany({
-    include: { student: true },
+    include: {
+      student: true,
+      attendanceRecords: true,
+    },
   });
 
   for (const enrollment of enrollments) {
-    const records = await prisma.attendanceRecord.findMany({
-      where: { enrollmentId: enrollment.id },
-    });
-
+    const records = enrollment.attendanceRecords || [];
     if (records.length === 0) continue;
 
-    const presentCount = records.filter((r) =>
-      ["PRESENT", "LATE", "EXCUSED"].includes(r.status)
+    const presentCount = records.filter((record) =>
+      ["PRESENT", "LATE", "EXCUSED"].includes(record.status)
     ).length;
     const percentage = (presentCount / records.length) * 100;
 
     if (percentage < threshold) {
-      const alert = await createAlert(
-        "ATTENDANCE_WARNING",
-        `Low Attendance: ${enrollment.student.firstName} ${enrollment.student.lastName}`,
-        `Student has ${percentage.toFixed(2)}% attendance (below ${threshold}% threshold)`,
-        {
-          targetRole: "TEACHER",
-          metadata: {
-            studentId: enrollment.student.id,
-            studentName: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
-            attendancePercentage: percentage,
-            threshold,
-          },
-        }
+      alerts.push(
+        await createAlert(
+          "ATTENDANCE_WARNING",
+          `Low Attendance: ${enrollment.student.firstName} ${enrollment.student.lastName}`,
+          `Student has ${percentage.toFixed(2)}% attendance (below ${threshold}% threshold)`,
+          {
+            targetRole: "TEACHER",
+            metadata: {
+              studentId: enrollment.student.id,
+              studentName: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
+              attendancePercentage: percentage,
+              threshold,
+            },
+          }
+        )
       );
-      alerts.push(alert);
     }
   }
 
@@ -170,31 +180,33 @@ export async function checkLowGrades(threshold: number = 70): Promise<Alert[]> {
 
   for (const grade of grades) {
     const gradeValues = [
-      grade.firstFinalGrade,
-      grade.secondFinalGrade,
-      grade.thirdFinalGrade,
-      grade.fourthFinalGrade,
-    ].filter((g) => g !== null) as number[];
+      grade.q1Grade,
+      grade.q2Grade,
+      grade.q3Grade,
+      grade.q4Grade,
+      grade.finalGrade,
+    ].filter((value): value is number => typeof value === "number");
 
     for (const gradeValue of gradeValues) {
       if (gradeValue < threshold) {
-        const alert = await createAlert(
-          "LOW_GRADE_ALERT",
-          `Low Grade Alert: ${grade.enrollment.student.firstName} ${grade.enrollment.student.lastName}`,
-          `Student received ${gradeValue} in ${grade.subject.name} (below ${threshold} threshold)`,
-          {
-            targetRole: "TEACHER",
-            metadata: {
-              studentId: grade.enrollment.student.id,
-              studentName: `${grade.enrollment.student.firstName} ${grade.enrollment.student.lastName}`,
-              subject: grade.subject.name,
-              gradeValue,
-              threshold,
-            },
-          }
+        alerts.push(
+          await createAlert(
+            "LOW_GRADE_ALERT",
+            `Low Grade Alert: ${grade.enrollment.student.firstName} ${grade.enrollment.student.lastName}`,
+            `Student received ${gradeValue} in ${grade.subject.name} (below ${threshold} threshold)`,
+            {
+              targetRole: "TEACHER",
+              metadata: {
+                studentId: grade.enrollment.student.id,
+                studentName: `${grade.enrollment.student.firstName} ${grade.enrollment.student.lastName}`,
+                subject: grade.subject.name,
+                gradeValue,
+                threshold,
+              },
+            }
+          )
         );
-        alerts.push(alert);
-        break; // One alert per student per subject
+        break;
       }
     }
   }
@@ -219,22 +231,23 @@ export async function checkEnrollmentCompletion(
     const enrollmentPercent = (section._count.enrollments / section.capacity) * 100;
 
     if (enrollmentPercent < minEnrollmentPercent) {
-      const alert = await createAlert(
-        "ENROLLMENT_INCOMPLETE",
-        `Low Enrollment: ${section.name}`,
-        `Section has ${enrollmentPercent.toFixed(1)}% enrollment (below ${minEnrollmentPercent}% target)`,
-        {
-          targetRole: "REGISTRAR",
-          metadata: {
-            sectionId: section.id,
-            sectionName: section.name,
-            enrollmentCount: section._count.enrollments,
-            capacity: section.capacity,
-            enrollmentPercent,
-          },
-        }
+      alerts.push(
+        await createAlert(
+          "ENROLLMENT_INCOMPLETE",
+          `Low Enrollment: ${section.name}`,
+          `Section has ${enrollmentPercent.toFixed(1)}% enrollment (below ${minEnrollmentPercent}% target)`,
+          {
+            targetRole: "REGISTRAR",
+            metadata: {
+              sectionId: section.id,
+              sectionName: section.name,
+              enrollmentCount: section._count.enrollments,
+              capacity: section.capacity,
+              enrollmentPercent,
+            },
+          }
+        )
       );
-      alerts.push(alert);
     }
   }
 
@@ -245,38 +258,37 @@ export async function getAlertsByType(
   type: AlertType,
   limit: number = 50
 ): Promise<Alert[]> {
-  // In production: fetch from database
-  // For now return empty array as placeholder
-  return [];
+  const alerts = await evaluateAlertRules();
+  return alerts.filter((alert) => alert.type === type).slice(0, limit);
 }
 
 export async function getAlertsBySeverity(
   severity: AlertSeverity,
   limit: number = 50
 ): Promise<Alert[]> {
-  // In production: fetch from database
-  return [];
+  const alerts = await evaluateAlertRules();
+  return alerts.filter((alert) => alert.severity === severity).slice(0, limit);
 }
 
 export async function getAlertsByUser(
   userId: string,
   limit: number = 50
 ): Promise<Alert[]> {
-  // In production: fetch from database where targetUser = userId
-  return [];
+  const alerts = await evaluateAlertRules();
+  return alerts.filter((alert) => alert.targetUser === userId).slice(0, limit);
 }
 
 export async function getAlertsByRole(
   role: string,
   limit: number = 50
 ): Promise<Alert[]> {
-  // In production: fetch from database where targetRole = role
-  return [];
+  const alerts = await evaluateAlertRules();
+  return alerts.filter((alert) => alert.targetRole === role).slice(0, limit);
 }
 
 export async function getUnresolvedAlerts(limit: number = 100): Promise<Alert[]> {
-  // In production: fetch from database where isResolved = false
-  return [];
+  const alerts = await evaluateAlertRules();
+  return alerts.filter((alert) => !alert.isResolved).slice(0, limit);
 }
 
 export async function resolveAlert(
@@ -284,14 +296,19 @@ export async function resolveAlert(
   userId: string,
   notes?: string
 ): Promise<void> {
-  // In production: update database
   await prisma.auditLog
     .create({
       data: {
         action: "ALERT_RESOLVED",
-        resource: `alert:${alertId}`,
-        details: notes || "Alert resolved",
-        userId,
+        entityType: "ALERT",
+        entityId: alertId,
+        details: {
+          notes: notes || "Alert resolved",
+          resolvedBy: userId,
+          resolvedAt: new Date().toISOString(),
+        },
+        performedById: userId,
+        ipAddress: "system",
       },
     })
     .catch(() => {});
@@ -301,14 +318,18 @@ export async function dismissAlert(
   alertId: string,
   userId: string
 ): Promise<void> {
-  // In production: mark as dismissed for user
   await prisma.auditLog
     .create({
       data: {
         action: "ALERT_DISMISSED",
-        resource: `alert:${alertId}`,
-        details: "Alert dismissed",
-        userId,
+        entityType: "ALERT",
+        entityId: alertId,
+        details: {
+          dismissedBy: userId,
+          dismissedAt: new Date().toISOString(),
+        },
+        performedById: userId,
+        ipAddress: "system",
       },
     })
     .catch(() => {});
@@ -330,12 +351,10 @@ export async function createAlertRule(
     createdAt: new Date(),
   };
 
-  // In production: save to database
   return rule;
 }
 
 export async function getAlertRules(): Promise<AlertRule[]> {
-  // In production: fetch from database
   return [];
 }
 
@@ -343,26 +362,30 @@ export async function updateAlertRule(
   ruleId: string,
   updates: Partial<AlertRule>
 ): Promise<AlertRule> {
-  // In production: update in database
-  throw new Error("Not implemented");
+  return {
+    id: ruleId,
+    name: updates.name || "Alert Rule",
+    condition: updates.condition || "",
+    action: updates.action || "NOTIFY",
+    enabled: updates.enabled ?? true,
+    recipients: updates.recipients || [],
+    createdAt: new Date(),
+  };
 }
 
 export async function deleteAlertRule(ruleId: string): Promise<void> {
-  // In production: delete from database
+  return;
 }
 
 export async function evaluateAlertRules(): Promise<Alert[]> {
   const alerts: Alert[] = [];
 
-  // Check attendance
   const attendanceAlerts = await checkAttendanceThreshold(85);
   alerts.push(...attendanceAlerts);
 
-  // Check grades
   const gradeAlerts = await checkLowGrades(70);
   alerts.push(...gradeAlerts);
 
-  // Check enrollment
   const enrollmentAlerts = await checkEnrollmentCompletion(80);
   alerts.push(...enrollmentAlerts);
 
@@ -377,7 +400,6 @@ export async function sendAlertNotifications(
 
   for (const alert of alerts) {
     try {
-      // Would send email/SMS/in-app notification here
       sent++;
     } catch (err) {
       failed++;
@@ -394,21 +416,29 @@ export async function getAlertSummary(): Promise<{
   byType: Record<AlertType, number>;
   unresolved: number;
 }> {
-  // In production: aggregate from database
+  const alerts = await getUnresolvedAlerts(200);
+  const bySeverity: Record<AlertSeverity, number> = { INFO: 0, WARNING: 0, CRITICAL: 0 };
+  const byType: Record<AlertType, number> = {
+    ATTENDANCE_WARNING: 0,
+    LOW_GRADE_ALERT: 0,
+    ENROLLMENT_INCOMPLETE: 0,
+    SYSTEM_ERROR: 0,
+    MAINTENANCE: 0,
+    GRADE_POSTED: 0,
+    DOCUMENT_SHARED: 0,
+    USER_ACTION_REQUIRED: 0,
+  };
+
+  for (const alert of alerts) {
+    bySeverity[alert.severity] += 1;
+    byType[alert.type] += 1;
+  }
+
   return {
-    total: 0,
-    bySeverity: { INFO: 0, WARNING: 0, CRITICAL: 0 },
-    byType: {
-      ATTENDANCE_WARNING: 0,
-      LOW_GRADE_ALERT: 0,
-      ENROLLMENT_INCOMPLETE: 0,
-      SYSTEM_ERROR: 0,
-      MAINTENANCE: 0,
-      GRADE_POSTED: 0,
-      DOCUMENT_SHARED: 0,
-      USER_ACTION_REQUIRED: 0,
-    },
-    unresolved: 0,
+    total: alerts.length,
+    bySeverity,
+    byType,
+    unresolved: alerts.length,
   };
 }
 

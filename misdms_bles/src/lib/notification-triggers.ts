@@ -2,6 +2,7 @@
 
 import { sendEmail, type EmailNotification } from "./email-service";
 import { prisma } from "./prisma";
+import { calculateAttendancePercentage } from "./attendance-utils";
 
 export async function notifyAttendanceWarning(
   studentId: string,
@@ -16,7 +17,19 @@ export async function notifyAttendanceWarning(
 
     if (!student || !student.enrollments[0]) return;
 
-    const section = student.enrollments[0].section;
+    const enrollmentIds = student.enrollments.map((enrollment) => enrollment.id);
+    const attendanceRecords = await prisma.attendanceRecord.findMany({
+      where: {
+        enrollmentId: { in: enrollmentIds },
+        quarter,
+      },
+      select: { status: true },
+    });
+
+    const presentDays = attendanceRecords.filter((record) => record.status === "PRESENT").length;
+    const absentDays = attendanceRecords.filter((record) => record.status === "ABSENT").length;
+    const lateDays = attendanceRecords.filter((record) => record.status === "LATE").length;
+    const excusedDays = attendanceRecords.filter((record) => record.status === "EXCUSED").length;
 
     // Get parent/guardian email (assuming stored in metadata)
     const parentEmail = student.metadata?.parentEmail;
@@ -31,9 +44,10 @@ export async function notifyAttendanceWarning(
         studentName: `${student.firstName} ${student.lastName}`,
         quarter,
         attendancePercentage,
-        presentDays: 0, // TODO: Calculate from records
-        absentDays: 0,
-        lateDays: 0,
+        presentDays,
+        absentDays,
+        lateDays,
+        excusedDays,
         schoolName: "School Name",
         schoolWebsite: "https://school.edu",
       },
@@ -236,11 +250,29 @@ export async function sendDailyDigest(userId: string): Promise<void> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [attendanceCount, gradesCount, enrollmentCount] = await Promise.all([
+    const [attendanceCount, gradesCount, enrollmentCount, attendanceRecords] = await Promise.all([
       prisma.attendanceRecord.count({ where: { createdAt: { gte: today } } }),
       prisma.grade.count({ where: { updatedAt: { gte: today } } }),
       prisma.enrollment.count({ where: { createdAt: { gte: today } } }),
+      prisma.attendanceRecord.findMany({
+        select: { enrollmentId: true, status: true },
+      }),
     ]);
+
+    const attendanceByEnrollment = new Map<string, string[]>();
+    for (const record of attendanceRecords) {
+      const statuses = attendanceByEnrollment.get(record.enrollmentId) || [];
+      statuses.push(record.status);
+      attendanceByEnrollment.set(record.enrollmentId, statuses);
+    }
+
+    const lowAttendanceCount = Array.from(attendanceByEnrollment.values()).filter((statuses) => {
+      const present = statuses.filter((status) => status === "PRESENT").length;
+      const absent = statuses.filter((status) => status === "ABSENT").length;
+      const late = statuses.filter((status) => status === "LATE").length;
+      const excused = statuses.filter((status) => status === "EXCUSED").length;
+      return calculateAttendancePercentage(present, absent, late, excused) < 85;
+    }).length;
 
     await sendEmail({
       to: user.email,
@@ -250,7 +282,7 @@ export async function sendDailyDigest(userId: string): Promise<void> {
         userName: user.name,
         schoolName: "School Name",
         attendanceCount,
-        lowAttendanceCount: 3, // TODO: Calculate
+        lowAttendanceCount,
         gradesPostedCount: gradesCount,
         pendingSubmissions: 0,
         newEnrollments: enrollmentCount,

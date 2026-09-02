@@ -5,6 +5,7 @@ import {
   createReportTemplate,
   listReportTemplates,
   deleteReportTemplate,
+  updateReportTemplate,
   generateClassRecordReport,
   generateMasterListReport,
   generateAttendanceReport,
@@ -45,6 +46,28 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         template: saved,
+      });
+    }
+
+    if (action === "update_template") {
+      if (!template?.id) {
+        return badRequestResponse("Template ID is required");
+      }
+
+      const updated = await updateReportTemplate(template.id, {
+        name: template.name,
+        description: template.description || "",
+        type: template.type,
+        fields: template.fields,
+        filters: template.filters || {},
+        sorting: template.sorting || [],
+        createdBy: session.user.id,
+        isDefault: false,
+      });
+
+      return NextResponse.json({
+        success: true,
+        template: updated,
       });
     }
 

@@ -119,9 +119,11 @@ export async function POST(request: Request) {
       include: { section: true },
     });
 
-    if (!enrollment || enrollment.section.id !== sectionId) {
+    if (!enrollment || enrollment.section?.id !== sectionId) {
       return badRequestResponse(`Enrollment ${record.enrollmentId} not found in section`);
     }
+
+    record.studentId = enrollment.studentId;
   }
 
   // Create or update attendance records
@@ -130,7 +132,7 @@ export async function POST(request: Request) {
       prisma.attendanceRecord.upsert({
         where: {
           studentId_date_quarter: {
-            studentId: record.enrollmentId.split("_")[0], // Extract student ID from enrollment
+            studentId: record.studentId,
             date: dateObj,
             quarter,
           },
@@ -141,7 +143,7 @@ export async function POST(request: Request) {
           recordedById: session.user.id,
         },
         create: {
-          studentId: record.enrollmentId.split("_")[0],
+          studentId: record.studentId,
           enrollmentId: record.enrollmentId,
           date: dateObj,
           status: record.status,

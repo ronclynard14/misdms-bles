@@ -27,9 +27,9 @@ const navGroups = [
   ]},
   { label: "System", items: [
     { href: "/inventory", label: "Inventory", icon: Package },
+    { href: "/alerts", label: "Alerts & Notifications", icon: ShieldCheck },
     { href: "/audit-logs", label: "Audit Logs", icon: ShieldCheck },
   ]},
-];
 
 export function Sidebar() {
   const pathname = usePathname();
