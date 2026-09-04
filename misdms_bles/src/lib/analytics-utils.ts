@@ -264,7 +264,7 @@ export async function getStudentPerformance(sectionId: string): Promise<StudentP
     return {
       studentName: `${e.student.firstName} ${e.student.lastName}`,
       lrn: e.student.lrn,
-      section: e.section.name,
+      section: e.section?.name || "Unassigned",
       q1Grade: q1,
       q2Grade: q2,
       q3Grade: q3,
@@ -287,6 +287,7 @@ export async function getEnrollmentTrend(): Promise<EnrollmentTrend[]> {
   const grouped: Record<string, EnrollmentTrend> = {};
 
   for (const enrollment of enrollments) {
+    if (!enrollment.section) continue;
     const key = `${enrollment.academicYear.year}-${enrollment.section.gradeLevel}`;
 
     if (!grouped[key]) {
@@ -300,7 +301,7 @@ export async function getEnrollmentTrend(): Promise<EnrollmentTrend[]> {
     }
 
     grouped[key].totalEnrolled++;
-    if (enrollment.status === "ACTIVE") {
+    if (enrollment.status === "ENROLLED") {
       grouped[key].totalActive++;
     } else {
       grouped[key].totalInactive++;

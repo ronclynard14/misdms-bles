@@ -3,6 +3,8 @@ import { Users, ClipboardList, GraduationCap, FolderArchive } from "lucide-react
 
 const grades = ["KINDERGARTEN", "GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6"];
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const [year, students, docs, faculty, enrolls, secs, gradeCounts] = await Promise.all([
     prisma.academicYear.findFirst({ where: { isCurrent: true } }),

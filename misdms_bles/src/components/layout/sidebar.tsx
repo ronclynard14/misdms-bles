@@ -30,6 +30,7 @@ const navGroups = [
     { href: "/alerts", label: "Alerts & Notifications", icon: ShieldCheck },
     { href: "/audit-logs", label: "Audit Logs", icon: ShieldCheck },
   ]},
+];
 
 export function Sidebar() {
   const pathname = usePathname();

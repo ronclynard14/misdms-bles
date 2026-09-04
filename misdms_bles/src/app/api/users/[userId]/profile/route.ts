@@ -4,11 +4,11 @@ import { authOptions, hasPermission, type Role } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { unauthorizedResponse, badRequestResponse, notFoundResponse } from "@/lib/api-responses";
 
-export async function GET(request: Request, { params }: { params: { userId: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ userId: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) return unauthorizedResponse();
 
-  const { userId } = params;
+  const { userId } = await params;
   const isOwnProfile = session.user.id === userId;
 
   try {
@@ -35,11 +35,11 @@ export async function GET(request: Request, { params }: { params: { userId: stri
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { userId: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ userId: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) return unauthorizedResponse();
 
-  const { userId } = params;
+  const { userId } = await params;
   const isOwnProfile = session.user.id === userId;
 
   if (!isOwnProfile && !hasPermission(session.user.role as Role, "user:manage")) {

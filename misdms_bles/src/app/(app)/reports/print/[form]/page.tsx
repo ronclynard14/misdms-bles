@@ -68,7 +68,7 @@ export default function PrintFormPage() {
             <tr className="border-2 border-slate-800 bg-slate-100 text-center">
               <th className="border border-slate-700 px-2 py-2 font-semibold">NO.</th>
               <th className="border border-slate-700 px-2 py-2 font-semibold">LRN</th>
-              <th className="border border-slate-700 px-2 py-2 font-semibold">LEARNER'S NAME (Last, First, Middle)</th>
+              <th className="border border-slate-700 px-2 py-2 font-semibold">LEARNER&apos;S NAME (Last, First, Middle)</th>
               <th className="border border-slate-700 px-2 py-2 font-semibold">SEX</th>
               <th className="border border-slate-700 px-2 py-2 font-semibold">BIRTH DATE</th>
             </tr>

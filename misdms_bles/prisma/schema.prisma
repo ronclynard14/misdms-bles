@@ -113,6 +113,23 @@ enum Quarter {
   FOURTH
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum GradeWorkflowStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  POSTED
+  FINALIZED
+}
+
 enum SchoolFormType {
   SF1
   SF2
@@ -200,6 +217,8 @@ model User {
   uploadedFiles    UploadedFile[]   @relation("FileUploader")
   sentNotifications Notification[]  @relation("NotificationSender")
   updatedSettings  SystemSetting[]  @relation("SettingUpdater")
+  createdGrades    Grade[]          @relation("GradeCreator")
+  gradeWorkflowLogs GradeWorkflowLog[] @relation("GradeWorkflowActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -252,6 +271,8 @@ model Student {
   emergencyContactName  String?
   emergencyContactNumber String?
   emergencyContactRelation String?
+  email         String?
+  metadata      Json?
 
   // Status
   status        StudentStatus @default(ENROLLED)
@@ -394,10 +415,25 @@ model Grade {
   q4PeriodicTest Float?
   q4Grade        Float?
 
+  firstFinalGrade  Float?
+  secondFinalGrade Float?
+  thirdFinalGrade  Float?
+  fourthFinalGrade Float?
+  q1FinalGrade     Float?
+  q2FinalGrade     Float?
+  q3FinalGrade     Float?
+  q4FinalGrade     Float?
+
   finalGrade     Float? // Average of Q1-Q4
   remarks        String? // Passed/Failed
   submittedById  String?
   submittedAt    DateTime?
+  workflowStatus GradeWorkflowStatus @default(DRAFT)
+  postedAt       DateTime?
+  finalizedAt    DateTime?
+  createdById    String?
+  createdBy      User? @relation("GradeCreator", fields: [createdById], references: [id])
+  workflowLogs   GradeWorkflowLog[]
   locked         Boolean    @default(false)
 
   createdAt      DateTime   @default(now())
@@ -435,7 +471,7 @@ model AttendanceRecord {
   enrollmentId String
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   date         DateTime
-  status       String // PRESENT, ABSENT, LATE, EXCUSED
+  status       AttendanceStatus
   quarter      Quarter
   remarks      String?
   recordedById String?
@@ -461,6 +497,7 @@ model Document {
   fileUrl        String?          // Path to stored file
   fileType       String?          // PDF, PNG, JPG, DOCX
   fileSize       Int?             // In bytes
+  fileName       String?
   category       DocumentCategory
   status         DocumentStatus   @default(PENDING_REVIEW)
   tags           Json?            // Array of tags: ["urgent", "official", "2025"]
@@ -572,10 +609,28 @@ model AuditLog {
   performedBy User?  @relation("UserAuditLogs", fields: [performedById], references: [id])
   ipAddress String?
   timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+  resource  String?
 
   @@index([entityType])
   @@index([performedById])
   @@index([timestamp])
+}
+
+model GradeWorkflowLog {
+  id          String             @id @default(cuid())
+  gradeId     String
+  grade       Grade              @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  fromStatus  GradeWorkflowStatus
+  toStatus    GradeWorkflowStatus
+  action      String
+  performedBy String
+  actor       User?              @relation("GradeWorkflowActor", fields: [performedBy], references: [id])
+  remarks     String?
+  createdAt   DateTime           @default(now())
+
+  @@index([gradeId])
+  @@index([performedBy])
 }
 
 // ============================================

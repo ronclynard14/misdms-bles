@@ -153,7 +153,7 @@ export async function POST(request: Request) {
       referenceNumber: metadata.itemCode || `INV-${Date.now()}`,
       sender: metadata.supplier || "School Admin",
       recipient: metadata.location || "Main Office",
-      metadata,
+      metadata: metadata as Record<string, string | number | boolean | null>,
       isConfidential: false,
       uploadedById: session.user.id,
       createdById: session.user.id,
@@ -195,7 +195,9 @@ export async function PATCH(request: Request) {
   });
   if (!existing) return notFoundResponse("Inventory item");
 
-  const metadata = { ...(existing.metadata ?? {}) };
+  const metadata = existing.metadata && typeof existing.metadata === "object" && !Array.isArray(existing.metadata)
+    ? { ...(existing.metadata as Record<string, unknown>) }
+    : {};
   const nextTitle = updates.title?.trim() ?? existing.title;
   const nextDescription = updates.description?.trim() ?? existing.description ?? "";
 
@@ -218,7 +220,7 @@ export async function PATCH(request: Request) {
       sender: metadata.supplier || existing.sender || "School Admin",
       recipient: metadata.location || existing.recipient || "Main Office",
       status: updates.status || existing.status,
-      metadata,
+      metadata: metadata as any,
     },
     include: { uploadedBy: { select: { name: true } } },
   });
@@ -261,7 +263,9 @@ export async function DELETE(request: Request) {
     data: {
       status: "ARCHIVED",
       metadata: {
-        ...(item.metadata ?? {}),
+        ...(item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+          ? (item.metadata as Record<string, unknown>)
+          : {}),
         archivedAt: new Date().toISOString(),
       },
     },

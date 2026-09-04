@@ -10,7 +10,7 @@ const UPLOAD_DIR = join(process.cwd(), "storage", "uploads");
 
 export async function GET(
   request: Request,
-  { params }: { params: { fileName: string } }
+  { params }: { params: Promise<{ fileName: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) return unauthorizedResponse();
@@ -22,7 +22,8 @@ export async function GET(
     });
   }
 
-  const fileName = basename(params.fileName);
+  const { fileName: requestedFileName } = await params;
+  const fileName = basename(requestedFileName);
   const file = await prisma.uploadedFile.findUnique({ where: { fileName } });
   if (!file) return notFoundResponse("File");
 

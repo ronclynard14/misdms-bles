@@ -304,7 +304,7 @@ export async function getGradeWorkflowHistory(gradeId: string): Promise<GradeWor
     action: log.action,
     performedBy: log.performedBy,
     performedByRole: "UNKNOWN", // Would need to join with user table
-    remarks: log.remarks,
+    remarks: log.remarks || undefined,
     timestamp: log.createdAt,
   }));
 }

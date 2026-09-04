@@ -73,17 +73,17 @@ export default function ReportCustomizationPage() {
   const [sectionId, setSectionId] = useState("");
   const [subjectId, setSubjectId] = useState("");
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
-  }
-
   useEffect(() => {
     if (session?.user?.id) {
       fetchTemplates();
       setSelectedFields(AVAILABLE_FIELDS[reportType].map((f) => f.value));
     }
   }, [session, reportType]);
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   async function fetchTemplates() {
     try {

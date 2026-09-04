@@ -47,16 +47,16 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
-  }
-
   useEffect(() => {
     if (session?.user?.id) {
       fetchAnalytics();
     }
   }, [session]);
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   async function fetchAnalytics() {
     try {

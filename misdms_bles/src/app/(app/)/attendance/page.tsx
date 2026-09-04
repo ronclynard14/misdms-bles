@@ -106,10 +106,12 @@ export default function AttendancePage() {
   }, [selectedSection, selectedDate]);
 
   const handleStatusChange = (enrollmentId: string, status: AttendanceStatus) => {
-    setAttendance((prev) => ({
-      ...prev,
-      [enrollmentId]: status === prev[enrollmentId] ? undefined : status,
-    }));
+    setAttendance((prev) => {
+      const next = { ...prev };
+      if (status === prev[enrollmentId]) delete next[enrollmentId];
+      else next[enrollmentId] = status;
+      return next;
+    });
   };
 
   const handleSave = async () => {

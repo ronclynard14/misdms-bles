@@ -63,7 +63,13 @@ export async function GET(request: Request) {
 
   // Generate summary
   const summaries = generateAttendanceReport(
-    records,
+    records.map((record) => ({
+      ...record,
+      status: record.status as "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
+      quarter: record.quarter as "FIRST" | "SECOND" | "THIRD" | "FOURTH",
+      remarks: record.remarks ?? undefined,
+      recordedById: record.recordedById ?? undefined,
+    })),
     enrollments.map((e) => e.student)
   );
 
@@ -71,16 +77,16 @@ export async function GET(request: Request) {
 }
 
 // GET /api/attendance/summary/[studentId] - Student's personal attendance
-export async function getDynamic(
+async function getDynamic(
   request: Request,
-  { params }: { params: { studentId?: string } }
+  { params }: { params: Promise<{ studentId?: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return unauthorizedResponse();
   }
 
-  const studentId = params.studentId;
+  const { studentId } = await params;
   if (!studentId) {
     return badRequestResponse("studentId is required");
   }

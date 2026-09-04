@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import * as fs from "fs";
 import * as path from "path";
 import * as zlib from "zlib";
+import * as crypto from "crypto";
 
 export interface BackupMetadata {
   id: string;
@@ -239,9 +240,10 @@ export async function deleteBackup(backupId: string, userId: string): Promise<vo
     await prisma.auditLog.create({
       data: {
         action: "BACKUP_DELETED",
+        entityType: "BACKUP",
+        entityId: backupId,
         resource: `backup:${backupId}`,
-        details: `Backup deleted`,
-        userId,
+        details: { message: "Backup deleted", userId },
       },
     }).catch(() => {});
   } catch (err) {
@@ -261,7 +263,6 @@ export async function downloadBackup(backupId: string): Promise<Buffer> {
 }
 
 export function calculateChecksum(data: string): string {
-  const crypto = require("crypto");
   return crypto.createHash("sha256").update(data).digest("hex");
 }
 

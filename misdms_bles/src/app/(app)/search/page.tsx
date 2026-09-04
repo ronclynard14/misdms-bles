@@ -50,16 +50,16 @@ export default function SearchPage() {
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
-  }
-
   useEffect(() => {
     if (session?.user?.id) {
       fetchFilterOptions();
     }
   }, [resource, session]);
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   async function fetchFilterOptions() {
     try {

@@ -47,17 +47,17 @@ export default function AlertsPage() {
   const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [checkInProgress, setCheckInProgress] = useState<string | null>(null);
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
-  }
-
   useEffect(() => {
     if (session?.user?.id) {
       if (view === "all") fetchAlerts();
       else if (view === "summary") fetchSummary();
     }
   }, [session, view]);
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   async function fetchAlerts() {
     try {

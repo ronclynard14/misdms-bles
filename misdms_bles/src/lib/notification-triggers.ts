@@ -4,6 +4,12 @@ import { sendEmail, type EmailNotification } from "./email-service";
 import { prisma } from "./prisma";
 import { calculateAttendancePercentage } from "./attendance-utils";
 
+function getMetadataValue(metadata: unknown, key: string): string | undefined {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return undefined;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : undefined;
+}
+
 export async function notifyAttendanceWarning(
   studentId: string,
   attendancePercentage: number,
@@ -21,7 +27,7 @@ export async function notifyAttendanceWarning(
     const attendanceRecords = await prisma.attendanceRecord.findMany({
       where: {
         enrollmentId: { in: enrollmentIds },
-        quarter,
+        quarter: quarter as "FIRST" | "SECOND" | "THIRD" | "FOURTH",
       },
       select: { status: true },
     });
@@ -32,7 +38,7 @@ export async function notifyAttendanceWarning(
     const excusedDays = attendanceRecords.filter((record) => record.status === "EXCUSED").length;
 
     // Get parent/guardian email (assuming stored in metadata)
-    const parentEmail = student.metadata?.parentEmail;
+    const parentEmail = getMetadataValue(student.metadata, "parentEmail");
     if (!parentEmail) return;
 
     await sendEmail({
@@ -40,7 +46,7 @@ export async function notifyAttendanceWarning(
       subject: `Attendance Warning - ${student.firstName} ${student.lastName}`,
       template: "attendance_warning",
       data: {
-        parentName: student.metadata?.parentName || "Parent",
+        parentName: getMetadataValue(student.metadata, "parentName") || "Parent",
         studentName: `${student.firstName} ${student.lastName}`,
         quarter,
         attendancePercentage,
@@ -77,7 +83,7 @@ export async function notifyGradePosted(
     if (!enrollment || !grade || !subject) return;
 
     const student = enrollment.student;
-    const studentEmail = student.metadata?.email;
+    const studentEmail = getMetadataValue(student.metadata, "email") || student.email;
     if (!studentEmail) return;
 
     // Determine grade description
@@ -125,7 +131,7 @@ export async function notifyEnrollmentConfirmation(enrollmentId: string): Promis
 
     if (!enrollment) return;
 
-    const parentEmail = enrollment.student.metadata?.parentEmail;
+    const parentEmail = getMetadataValue(enrollment.student.metadata, "parentEmail");
     if (!parentEmail) return;
 
     await sendEmail({
@@ -133,11 +139,11 @@ export async function notifyEnrollmentConfirmation(enrollmentId: string): Promis
       subject: `Enrollment Confirmation`,
       template: "enrollment_confirmation",
       data: {
-        parentName: enrollment.student.metadata?.parentName || "Parent",
+        parentName: getMetadataValue(enrollment.student.metadata, "parentName") || "Parent",
         studentName: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
         schoolName: "School Name",
-        gradeLevel: enrollment.section.gradeLevel,
-        section: enrollment.section.name,
+        gradeLevel: enrollment.section?.gradeLevel || "",
+        section: enrollment.section?.name || "",
         academicYear: enrollment.academicYear.year,
         lrn: enrollment.student.lrn,
         schoolStartDate: "2026-08-25",

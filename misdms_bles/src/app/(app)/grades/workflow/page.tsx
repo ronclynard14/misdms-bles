@@ -61,16 +61,16 @@ export default function GradeWorkflowPage() {
   const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
-  }
-
   useEffect(() => {
     if (session?.user?.id && view === "pending") {
       fetchGradesPending();
     }
   }, [session, view, selectedStatus]);
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   async function fetchGradesPending() {
     setLoading(true);

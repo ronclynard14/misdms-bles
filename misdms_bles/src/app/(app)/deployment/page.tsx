@@ -23,11 +23,6 @@ export default function PerformanceDeploymentPage() {
   const [deploymentChecklist, setDeploymentChecklist] = useState<ChecklistCategory[]>([]);
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
-  }
-
   useEffect(() => {
     // Load checklists
     setSecurityChecklist([
@@ -109,6 +104,11 @@ export default function PerformanceDeploymentPage() {
       },
     ]);
   }, []);
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   function toggleTask(category: string, taskIndex: number) {
     const key = `${category}-${taskIndex}`;

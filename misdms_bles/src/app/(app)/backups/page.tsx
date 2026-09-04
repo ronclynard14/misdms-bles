@@ -35,16 +35,16 @@ export default function BackupsPage() {
   const [showDetails, setShowDetails] = useState(false);
   const [restoreConfirm, setRestoreConfirm] = useState<string | null>(null);
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
-  }
-
   useEffect(() => {
     if (session?.user?.id) {
       fetchBackups();
     }
   }, [session]);
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   async function fetchBackups() {
     try {
