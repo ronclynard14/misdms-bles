@@ -47,7 +47,7 @@ function LoginForm() {
             Management Information System & Document Management System
           </p>
           <p className="mt-1 text-xs text-amber-300">
-            School ID: 125861 | Schools Division of Batangas City
+            School ID: 105693 | Schools Division of San Jose City
           </p>
         </div>
 
@@ -101,13 +101,6 @@ function LoginForm() {
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
-
-          <div className="mt-6 rounded-md bg-slate-50 p-3 text-xs text-slate-500">
-            <p className="font-semibold text-slate-700">Demo Accounts:</p>
-            <p>admin@bles.edu.ph / admin123</p>
-            <p>principal@bles.edu.ph / principal123</p>
-            <p>teacher@bles.edu.ph / teacher123</p>
-          </div>
         </div>
     </div>
   );
