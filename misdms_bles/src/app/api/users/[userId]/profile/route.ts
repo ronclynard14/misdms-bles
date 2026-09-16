@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions, hasPermission, type Role } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { unauthorizedResponse, badRequestResponse, notFoundResponse } from "@/lib/api-responses";
+import { unauthorizedResponse, notFoundResponse, forbiddenResponse } from "@/lib/api-responses";
 
 export async function GET(request: Request, { params }: { params: Promise<{ userId: string }> }) {
   const session = await getServerSession(authOptions);
@@ -10,6 +10,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
 
   const { userId } = await params;
   const isOwnProfile = session.user.id === userId;
+  if (!isOwnProfile && !hasPermission(session.user.role as Role, "user:manage")) {
+    return forbiddenResponse("You can only view your own profile");
+  }
 
   try {
     const user = await prisma.user.findUnique({

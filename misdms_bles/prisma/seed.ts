@@ -1,10 +1,20 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type GradeLevel, type DocumentCategory, type DocumentStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.SEED_DATABASE !== "true") {
+    throw new Error("Refusing to run the seed script in production without SEED_DATABASE=true.");
+  }
+
   console.log("🌱 Seeding Batong Lusong Elementary School database...");
+
+  const existingUserCount = await prisma.user.count();
+  if (existingUserCount > 0 && process.env.SEED_DATABASE_FORCE !== "true") {
+    console.log("ℹ️ Database already contains users; skipping demo seed data.");
+    return;
+  }
 
   // ========== USERS ==========
   const admin = await prisma.user.upsert({
@@ -103,7 +113,7 @@ async function main() {
   });
 
   // ========== SECTIONS ==========
-  const sectionData = [
+  const sectionData: Array<{ name: string; gradeLevel: GradeLevel; adviser: (typeof teachers)[number] }> = [
     { name: "Sampaguita", gradeLevel: "KINDERGARTEN", adviser: teachers[0] },
     { name: "Mabini", gradeLevel: "GRADE_1", adviser: teachers[1] },
     { name: "Bonifacio", gradeLevel: "GRADE_2", adviser: teachers[2] },
@@ -132,7 +142,7 @@ async function main() {
   console.log(`✅ Created ${sections.length} sections`);
 
   // ========== SUBJECTS ==========
-  const subjects = [
+  const subjects: Array<[string, string, GradeLevel]> = [
     ["Filipino", "FIL", "GRADE_1"], ["English", "ENG", "GRADE_1"], ["Mathematics", "MATH", "GRADE_1"],
     ["Science", "SCI", "GRADE_3"], ["Araling Panlipunan", "AP", "GRADE_1"], ["MAPEH", "MAPEH", "GRADE_1"],
     ["Edukasyon sa Pagpapakatao", "ESP", "GRADE_1"], ["Mother Tongue", "MTB", "GRADE_1"],
@@ -239,7 +249,7 @@ async function main() {
   console.log("✅ Created 100 students with enrollments");
 
   // ========== DOCUMENTS ==========
-  const docs = [
+  const docs: Array<{ title: string; category: DocumentCategory; status: DocumentStatus; ref: string; confidential: boolean }> = [
     { title: "DepEd Order No. 21, s. 2025 - Implementing Guidelines on School Calendar", category: "DEPED_ORDER", status: "ARCHIVED", ref: "DO-2025-021", confidential: false },
     { title: "Division Memorandum - Mid-Year INSET Schedule", category: "DEPED_MEMORANDUM", status: "APPROVED", ref: "DM-2025-118", confidential: false },
     { title: "School MOOE Plan for SY 2025-2026", category: "FINANCIAL_MOOE", status: "PENDING_REVIEW", ref: "BLES-MOOE-2025", confidential: true },

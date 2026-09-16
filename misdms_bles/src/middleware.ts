@@ -11,6 +11,10 @@ export default withAuth(
       return NextResponse.next();
     }
 
+    if (pathname === "/profile") {
+      return NextResponse.next();
+    }
+
     if (!token) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
@@ -59,5 +63,14 @@ export const config = {
     "/audit-logs/:path*",
     "/alerts/:path*",
     "/inventory/:path*",
+    "/analytics/:path*",
+    "/backups/:path*",
+    "/deployment/:path*",
+    "/docs/:path*",
+    "/export/:path*",
+    "/files/:path*",
+    "/profile/:path*",
+    "/search/:path*",
+    "/settings/:path*",
   ],
 };
