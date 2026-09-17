@@ -82,8 +82,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 Create or select a Supabase project, then connect it to the Vercel project using the official Supabase integration. Configure these variables in Vercel for **Production**, **Preview**, and **Development** as appropriate:
 
 ```env
-DATABASE_URL=<Supabase pooled connection string>
-DIRECT_URL=<Supabase direct connection string>
+DATABASE_URL=<Supabase transaction pooler connection string>
+DIRECT_URL=<Supabase session pooler connection string>
 NEXTAUTH_SECRET=<random secret>
 JWT_SECRET=<random secret>
 NEXTAUTH_URL=https://<your-vercel-domain>
@@ -97,6 +97,8 @@ After the integration is connected, deployments are automatic. Vercel detects th
 3. `next build` to build the application.
 
 The seed is idempotent for redeployments: once users exist, later deployments skip the demo data instead of deleting live records. Do not set `SEED_DATABASE_FORCE=true` on a production project because it intentionally recreates demo records and can overwrite the database flow.
+
+For Vercel, use the **transaction pooler** URL for `DATABASE_URL` and the **session pooler** URL for `DIRECT_URL`. The direct `db.<project-ref>.supabase.co:5432` endpoint may be IPv6-only and can produce Prisma `P1001` connection failures from Vercel build machines.
 
 The Supabase project itself cannot be created by a Vercel build without a Supabase management token. Project creation and the one-time integration connection are therefore the only setup steps; schema setup and initial seeding are automated by every deployment.
 
