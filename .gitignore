@@ -1,0 +1,19 @@
+# Root-level repo hygiene
+# Ignore nested project dependencies and build artifacts
+**/node_modules/
+**/.next/
+**/.vercel/
+**/dist/
+**/build/
+**/coverage/
+**/*.tsbuildinfo
+**/*.log
+**/.DS_Store
+**/.env*
+!**/.env.example
+
+# Common local editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
